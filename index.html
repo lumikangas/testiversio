@@ -4,11 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- PWA Meta Tags -->
+    <!-- PWA Metatiedot -->
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Polaroid 600">
+    
+    <!-- Linkitys manifest-tiedostoon -->
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-512.png">
     
     <title>Polaroid Studio 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,7 +57,6 @@
             border-radius: 1px;
         }
 
-        /* Tyhjä tila / Polaroidin kehys */
         .polaroid-placeholder {
             width: 280px;
             height: 340px;
@@ -175,7 +178,6 @@
     <div class="viewport" id="viewport">
         <canvas id="mainCanvas" class="hidden"></canvas>
         
-        <!-- Alkunäkymä ilman kuvaa -->
         <div id="emptyState" class="flex flex-col items-center">
             <div class="polaroid-placeholder">
                 <div class="photo-slot">
@@ -211,7 +213,6 @@
             <button class="tab-btn" onclick="switchTab('finish', this)">Finalize</button>
         </div>
 
-        <!-- Kamera-asetukset -->
         <div class="settings-pane" id="opticsPane">
             <div class="control-group">
                 <div class="control-label"><span>Zoom</span><span class="control-val" id="zoomVal">1.0x</span></div>
@@ -223,7 +224,6 @@
             </div>
         </div>
 
-        <!-- Kemialliset säädöt -->
         <div class="settings-pane hidden" id="colorPane">
             <div class="control-group">
                 <div class="control-label"><span>Exposure</span><span class="control-val" id="expVal">100%</span></div>
@@ -256,7 +256,6 @@
             </div>
         </div>
 
-        <!-- Viimeistely -->
         <div class="settings-pane hidden" id="finishPane">
             <div class="control-group">
                 <div class="control-label"><span>Film Grain</span><span class="control-val" id="grainVal">30</span></div>
@@ -290,20 +289,13 @@
     </div>
 
 <script>
-    /**
-     * PWA Service Worker -suojaus.
-     * Esikatseluympäristöissä sw.js ei välttämättä ole saatavilla samassa polussa,
-     * joten suojataan rekisteröinti virheiltä hiekkalaatikossa.
-     */
+    // Service Worker -rekisteröinti (vain tuotannossa)
     const isSandbox = window.location.hostname.includes('goog') || window.location.protocol === 'blob:';
     if ('serviceWorker' in navigator && !isSandbox) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js')
                 .then(reg => console.log('PWA Service Worker registered'))
-                .catch(err => {
-                    // Hiljainen lokitus jos ollaan vielä kehitysvaiheessa
-                    console.warn('PWA Registration skipped in this environment.');
-                });
+                .catch(err => console.warn('PWA Registration failed:', err));
         });
     }
 
@@ -315,7 +307,7 @@
     const buffer = document.createElement('canvas');
     const bCtx = buffer.getContext('2d');
     
-    // Filmin kohina (Grain)
+    // Grain Noise
     const noiseBuffer = document.createElement('canvas');
     const nCtx = noiseBuffer.getContext('2d');
     function updateNoise() {
@@ -456,11 +448,9 @@
         const s = highRes ? 1 : (Math.min(window.innerWidth * 2, 800) / TOTAL_W);
         canvas.width = TOTAL_W * s; canvas.height = TOTAL_H * s;
         
-        // Kehyksen pohja
         ctx.fillStyle = "#ffffff"; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Brändäys (600)
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.06)";
         ctx.font = `800 ${46 * s}px 'Plus Jakarta Sans'`;
@@ -473,7 +463,6 @@
         const aspect = state.img.width / state.img.height;
         let dw = aspect > 1 ? (b * z * aspect) : (b * z), dh = aspect > 1 ? (b * z) : (b * z / aspect);
 
-        // Kuvan koostaminen puskuriin
         buffer.width = b; buffer.height = b;
         bCtx.fillStyle = "#000"; bCtx.fillRect(0, 0, b, b);
         bCtx.save();
@@ -483,12 +472,10 @@
         bCtx.restore();
         applyFilmEngine(bCtx, b, b);
 
-        // Piirretään kuva kehykseen
         ctx.save();
         ctx.beginPath(); ctx.rect(m, m, b, b); ctx.clip();
         ctx.drawImage(buffer, m, m);
 
-        // Kohina (Grain)
         const gVal = parseInt(ui.grain.value);
         if(gVal > 0) {
             ctx.save();
@@ -500,7 +487,6 @@
             ctx.restore();
         }
 
-        // Kiilto/Heijastus (Gloss)
         const glossVal = parseInt(ui.gloss.value);
         if(glossVal > 0) {
             ctx.save();
@@ -522,7 +508,6 @@
         }
         ctx.restore(); 
 
-        // Tekstimerkintä kehyksen alaosaan
         if(ui.markerText.value) {
             const sm = parseFloat(ui.textSize.value);
             ctx.font = `${110 * s * sm}px 'Permanent Marker'`;
